@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Settings - Relay{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-titles">
+        <div class="page-icon-badge" style="--badge-color: var(--c-pink); --badge-soft: var(--c-pink-soft);">{{ icon('settings', 'icon-lg') }}</div>
+        <div>
+            <h1>Settings</h1>
+            <div class="subtitle">Global controls that apply across every source and schedule.</div>
+        </div>
+    </div>
+</div>
+
+<div class="col-form narrow">
+    <form method="post" action="/settings">
+        <div class="toggle-row">
+            <div>
+                <div class="toggle-label">Bot enabled</div>
+                <div class="toggle-sub">Master on/off — pauses every schedule at once.</div>
+            </div>
+            <label class="switch">
+                <input type="checkbox" name="bot_enabled" {% if settings.bot_enabled %}checked{% endif %}>
+                <span class="track"><span class="thumb"></span></span>
+            </label>
+        </div>
+
+        <div class="toggle-row">
+            <div>
+                <div class="toggle-label">AI rewriting enabled</div>
+                <div class="toggle-sub">Turn off to post raw fetched content as-is.</div>
+            </div>
+            <label class="switch">
+                <input type="checkbox" name="rewrite_enabled" {% if settings.rewrite_enabled %}checked{% endif %}>
+                <span class="track"><span class="thumb"></span></span>
+            </label>
+        </div>
+
+        <label for="default_rewrite_style">Default rewrite style</label>
+        <select id="default_rewrite_style" name="default_rewrite_style">
+            <option value="none" {% if settings.default_rewrite_style == 'none' %}selected{% endif %}>None</option>
+            <option value="light" {% if settings.default_rewrite_style == 'light' %}selected{% endif %}>Light</option>
+            <option value="heavy" {% if settings.default_rewrite_style == 'heavy' %}selected{% endif %}>Heavy</option>
+        </select>
+
+        <label for="gemini_model">Default Gemini model</label>
+        <input type="text" id="gemini_model" name="gemini_model" value="{{ settings.gemini_model }}">
+
+        <label for="max_posts_per_hour">Max posts per hour</label>
+        <input type="number" id="max_posts_per_hour" name="max_posts_per_hour" min="1" value="{{ settings.max_posts_per_hour }}">
+        <p class="hint">A safety cap across all sources combined, to avoid flooding channels.</p>
+
+        <div class="toggle-row">
+            <div>
+                <div class="toggle-label">Include images</div>
+                <div class="toggle-sub">Attach source images to posts when available.</div>
+            </div>
+            <label class="switch">
+                <input type="checkbox" name="include_images" {% if settings.include_images %}checked{% endif %}>
+                <span class="track"><span class="thumb"></span></span>
+            </label>
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+            <span class="btn-text-default">Save settings</span>
+            <span class="spinner"></span>
+        </button>
+    </form>
+</div>
+{% endblock %}

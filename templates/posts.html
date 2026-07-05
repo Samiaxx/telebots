@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Posts Log - Relay{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-titles">
+        <div class="page-icon-badge" style="--badge-color: var(--c-amber); --badge-soft: var(--c-amber-soft);">{{ icon('posts', 'icon-lg') }}</div>
+        <div>
+            <h1>Posts Log</h1>
+            <div class="subtitle">Every post Relay has attempted, successful or not.</div>
+        </div>
+    </div>
+</div>
+
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>Time</th>
+            <th>Source</th>
+            <th>Channel</th>
+            <th>Status</th>
+            <th>Original</th>
+            <th>Rewritten</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for post in posts %}
+        <tr>
+            <td>{{ post.created_at.strftime("%b %d, %H:%M") }}</td>
+            <td>{{ post.source.name if post.source else "—" }}</td>
+            <td>{{ post.channel.name if post.channel else "—" }}</td>
+            <td>
+                <span class="badge badge-{{ 'success' if post.status == 'success' else 'failed' }}">{{ post.status }}</span>
+                {% if post.error_message %}<div class="muted small" style="margin-top:4px;">{{ post.error_message[:100] }}</div>{% endif %}
+            </td>
+            <td class="truncate">{{ (post.original_text or "")[:120] }}</td>
+            <td class="truncate">{{ (post.rewritten_text or "")[:120] }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="muted">No posts logged yet.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div class="pagination">
+    {% if page > 1 %}<a href="/posts?page={{ page - 1 }}">&laquo; Prev</a>{% endif %}
+    <span class="muted">Page {{ page }} of {{ total_pages }}</span>
+    {% if page < total_pages %}<a href="/posts?page={{ page + 1 }}">Next &raquo;</a>{% endif %}
+</div>
+{% endblock %}

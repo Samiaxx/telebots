@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Relay - Content Automation{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css?v=4">
+    <script>
+        (function() {
+            var t = localStorage.getItem("relay-theme") || "dark";
+            document.documentElement.setAttribute("data-theme", t);
+        })();
+    </script>
+</head>
+<body>
+{% from "_icons.html" import icon %}
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-mark">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M4 12C4 7.58172 7.58172 4 12 4C15.3923 4 18.2932 6.11723 19.4444 9.09883" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M20 4V9H15" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M20 12C20 16.4183 16.4183 20 12 20C8.60771 20 5.70684 17.8828 4.55557 14.9012" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M4 20V15H9" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <span class="brand-name">Relay</span>
+                    <span class="brand-tag">Content Automation</span>
+                </div>
+            </div>
+            <div class="theme-toggle">
+                <button type="button" data-theme-btn="dark">{{ icon('moon', 'icon') }}Dark</button>
+                <button type="button" data-theme-btn="light">{{ icon('sun', 'icon') }}Light</button>
+            </div>
+            <a class="nav-link {% if active_page == 'dashboard' %}active{% endif %}" data-nav="dashboard" href="/">{{ icon('dashboard', 'icon') }}Dashboard</a>
+            <a class="nav-link {% if active_page == 'sources' %}active{% endif %}" data-nav="sources" href="/sources">{{ icon('sources', 'icon') }}Sources</a>
+            <a class="nav-link {% if active_page == 'channels' %}active{% endif %}" data-nav="channels" href="/channels">{{ icon('channels', 'icon') }}Channels</a>
+            <a class="nav-link {% if active_page == 'schedules' %}active{% endif %}" data-nav="schedules" href="/schedules">{{ icon('schedules', 'icon') }}Schedules</a>
+            <a class="nav-link {% if active_page == 'posts' %}active{% endif %}" data-nav="posts" href="/posts">{{ icon('posts', 'icon') }}Posts Log</a>
+            <a class="nav-link {% if active_page == 'settings' %}active{% endif %}" data-nav="settings" href="/settings">{{ icon('settings', 'icon') }}Settings</a>
+            <a class="nav-link logout" href="/logout">{{ icon('logout', 'icon') }}Log out</a>
+        </nav>
+        <main class="content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    <script src="/static/js/app.js?v=4"></script>
+</body>
+</html>

@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Sources - Relay{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-titles">
+        <div class="page-icon-badge" style="--badge-color: var(--c-teal); --badge-soft: var(--c-teal-soft);">{{ icon('sources', 'icon-lg') }}</div>
+        <div>
+            <h1>Sources</h1>
+            <div class="subtitle">Websites and Telegram channels Relay pulls content from.</div>
+        </div>
+    </div>
+</div>
+
+<div class="two-col">
+    <div class="col-list">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Interval</th>
+                    <th>Health</th>
+                    <th>Active</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for source in sources %}
+                <tr data-toggle-row>
+                    <td>{{ source.name }}</td>
+                    <td><span class="badge badge-type-{{ 'website' if source.type == 'website' else 'telegram' }}">{{ "Website" if source.type == "website" else "Telegram" }}</span></td>
+                    <td>{{ source.fetch_interval_minutes }}m</td>
+                    <td>
+                        {% if source.last_error %}
+                        <span class="badge-health err"><span class="dot"></span>Error</span>
+                        {% elif source.last_fetched_at %}
+                        <span class="badge-health ok"><span class="dot"></span>OK</span>
+                        {% else %}
+                        <span class="badge-health idle"><span class="dot"></span>Not run yet</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="table-toggle-cell">
+                            <label class="switch">
+                                <input type="checkbox" {% if source.is_active %}checked{% endif %} data-ajax-toggle="/sources/{{ source.id }}/quick-toggle">
+                                <span class="track"><span class="thumb"></span></span>
+                            </label>
+                            <span class="toggle-status-text">{{ "On" if source.is_active else "Off" }}</span>
+                        </div>
+                    </td>
+                    <td class="row-actions">
+                        <a href="/sources/{{ source.id }}/edit">Edit</a>
+                        <form method="post" action="/sources/{{ source.id }}/delete" onsubmit="return confirm('Delete this source?');">
+                            <button type="submit" class="link-btn danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="muted">No sources yet — add your first one on the right.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="col-form">
+        <h2>{{ icon('plus', 'icon') }}{{ "Edit source" if edit_source else "Add source" }}</h2>
+        <form method="post" action="{{ '/sources/' ~ edit_source.id if edit_source else '/sources' }}">
+            <input type="hidden" name="source_id" value="{{ edit_source.id if edit_source else '' }}">
+            <label for="name">Name</label>
+            <input type="text" id="name" name="name" value="{{ edit_source.name if edit_source else '' }}" required>
+
+            <label for="type">Type</label>
+            <select id="type" name="type">
+                <option value="website" {% if edit_source and edit_source.type == 'website' %}selected{% endif %}>Website</option>
+                <option value="telegram_channel" {% if edit_source and edit_source.type == 'telegram_channel' %}selected{% endif %}>Telegram Channel</option>
+            </select>
+
+            <label for="url">URL / Channel username</label>
+            <input type="text" id="url" name="url" value="{{ edit_source.url if edit_source else '' }}" placeholder="https://example.com or @channelname" required>
+
+            <label for="fetch_interval_minutes">Fetch interval (minutes)</label>
+            <input type="number" id="fetch_interval_minutes" name="fetch_interval_minutes" min="1" value="{{ edit_source.fetch_interval_minutes if edit_source else 60 }}">
+
+            <label for="rewrite_style">AI rewrite intensity</label>
+            <select id="rewrite_style" name="rewrite_style">
+                <option value="none" {% if edit_source and edit_source.rewrite_style == 'none' %}selected{% endif %}>None — post as-is</option>
+                <option value="light" {% if not edit_source or edit_source.rewrite_style == 'light' %}selected{% endif %}>Light — light touch-up</option>
+                <option value="heavy" {% if edit_source and edit_source.rewrite_style == 'heavy' %}selected{% endif %}>Heavy — fully reworded</option>
+            </select>
+
+            <label for="language">Output language</label>
+            <input type="text" id="language" name="language" value="{{ edit_source.language if edit_source else 'English' }}">
+
+            <label for="topic_keywords">Topic keywords (comma-separated)</label>
+            <input type="text" id="topic_keywords" name="topic_keywords" value="{{ edit_source.topic_keywords if edit_source else '' }}" placeholder="tech, ai, startups">
+            <p class="hint">Only content matching one of these will be posted. Leave blank to allow anything.</p>
+
+            <label for="persona">Voice / persona <span class="muted" style="font-weight:400;">(optional, recommended)</span></label>
+            <textarea id="persona" name="persona" placeholder="e.g. a sharp crypto trader who's been in the space since 2017 — casual, a little skeptical of hype, uses trader slang naturally">{{ edit_source.persona if edit_source else '' }}</textarea>
+            <p class="hint">Describe who's "writing" the posts for this source. This is what makes the output sound like a real person in that niche instead of a generic rewrite — Relay uses it directly when prompting Gemini.</p>
+
+            <label for="priority">Priority (1-10)</label>
+            <input type="number" id="priority" name="priority" min="1" max="10" value="{{ edit_source.priority if edit_source else 5 }}">
+
+            <div class="toggle-row">
+                <div>
+                    <div class="toggle-label">Active</div>
+                    <div class="toggle-sub">Only active sources are fetched on schedule.</div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" name="is_active" {% if not edit_source or edit_source.is_active %}checked{% endif %}>
+                    <span class="track"><span class="thumb"></span></span>
+                </label>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                <span class="btn-text-default">{{ "Save changes" if edit_source else "Add source" }}</span>
+                <span class="spinner"></span>
+            </button>
+            <button type="button" class="btn btn-secondary" data-preview-rewrite>{{ icon('sparkle', 'icon') }}Preview rewrite</button>
+            {% if edit_source %}<a href="/sources" class="btn btn-secondary">Cancel</a>{% endif %}
+
+            <div class="preview-box">
+                <div class="preview-label">Original (sample)</div>
+                <div class="preview-original"></div>
+                <div class="preview-label">Rewritten by Relay</div>
+                <div class="preview-rewritten"></div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

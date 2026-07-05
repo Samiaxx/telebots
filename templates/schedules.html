@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Schedules - Relay{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-titles">
+        <div class="page-icon-badge" style="--badge-color: var(--c-blue); --badge-soft: var(--c-blue-soft);">{{ icon('schedules', 'icon-lg') }}</div>
+        <div>
+            <h1>Schedules</h1>
+            <div class="subtitle">Link a source to a channel and choose how often it runs.</div>
+        </div>
+    </div>
+</div>
+
+<div class="two-col">
+    <div class="col-list">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Source</th>
+                    <th>Channel</th>
+                    <th>Frequency</th>
+                    <th>Active</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for schedule in schedules %}
+                <tr data-toggle-row>
+                    <td>{{ schedule.source.name if schedule.source else "—" }}</td>
+                    <td>{{ schedule.channel.name if schedule.channel else "—" }}</td>
+                    <td><code>{{ schedule.cron_expression }}</code></td>
+                    <td>
+                        <div class="table-toggle-cell">
+                            <label class="switch">
+                                <input type="checkbox" {% if schedule.is_active %}checked{% endif %} data-ajax-toggle="/schedules/{{ schedule.id }}/toggle">
+                                <span class="track"><span class="thumb"></span></span>
+                            </label>
+                            <span class="toggle-status-text">{{ "On" if schedule.is_active else "Off" }}</span>
+                        </div>
+                    </td>
+                    <td class="row-actions">
+                        <form method="post" action="/schedules/{{ schedule.id }}/delete" onsubmit="return confirm('Delete this schedule?');">
+                            <button type="submit" class="link-btn danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="muted">No schedules yet — set one up on the right.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="col-form">
+        <h2>{{ icon('plus', 'icon') }}Add schedule</h2>
+        <form method="post" action="/schedules" data-schedule-builder>
+            <label for="source_id">Source</label>
+            <select id="source_id" name="source_id" required>
+                {% for source in sources %}
+                <option value="{{ source.id }}">{{ source.name }}</option>
+                {% endfor %}
+            </select>
+
+            <label for="channel_id">Destination channel</label>
+            <select id="channel_id" name="channel_id" required>
+                {% for channel in channels %}
+                <option value="{{ channel.id }}">{{ channel.name }}</option>
+                {% endfor %}
+            </select>
+
+            <label>How often should this run?</label>
+            <div class="freq-grid">
+                <div class="freq-chip" data-freq="15m">Every 15 min</div>
+                <div class="freq-chip" data-freq="30m">Every 30 min</div>
+                <div class="freq-chip" data-freq="1h">Every hour</div>
+                <div class="freq-chip" data-freq="3h">Every 3 hours</div>
+                <div class="freq-chip" data-freq="6h">Every 6 hours</div>
+                <div class="freq-chip" data-freq="daily">Once a day</div>
+            </div>
+
+            <input type="time" name="daily_time" value="09:00" style="display:none; margin-top:10px;">
+
+            <span class="advanced-toggle">Need a custom schedule? Enter a cron expression</span>
+            <div class="advanced-cron">
+                <input type="text" name="cron_expression" placeholder="*/30 * * * *">
+            </div>
+            <div class="cron-preview">Runs as: <code></code></div>
+
+            <div class="toggle-row">
+                <div>
+                    <div class="toggle-label">Active</div>
+                    <div class="toggle-sub">Start running on this schedule right away.</div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" name="is_active" checked>
+                    <span class="track"><span class="thumb"></span></span>
+                </label>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                <span class="btn-text-default">Add schedule</span>
+                <span class="spinner"></span>
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

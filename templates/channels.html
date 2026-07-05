@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Channels - Relay{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-titles">
+        <div class="page-icon-badge" style="--badge-color: var(--c-coral); --badge-soft: var(--c-coral-soft);">{{ icon('channels', 'icon-lg') }}</div>
+        <div>
+            <h1>Channels</h1>
+            <div class="subtitle">Destination Telegram channels Relay posts to.</div>
+        </div>
+    </div>
+</div>
+
+<div class="two-col">
+    <div class="col-list">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Telegram ID / Username</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for channel in channels %}
+                <tr>
+                    <td>{{ channel.name }}</td>
+                    <td><code>{{ channel.telegram_id }}</code></td>
+                    <td class="row-actions">
+                        <a href="/channels/{{ channel.id }}/edit">Edit</a>
+                        <form method="post" action="/channels/{{ channel.id }}/delete" onsubmit="return confirm('Delete this channel?');">
+                            <button type="submit" class="link-btn danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="3" class="muted">No channels yet — add your first destination on the right.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="col-form">
+        <h2>{{ icon('plus', 'icon') }}{{ "Edit channel" if edit_channel else "Add channel" }}</h2>
+        <form method="post" action="{{ '/channels/' ~ edit_channel.id if edit_channel else '/channels' }}">
+            <label for="name">Name</label>
+            <input type="text" id="name" name="name" value="{{ edit_channel.name if edit_channel else '' }}" required>
+
+            <label for="telegram_id">Telegram channel ID or @username</label>
+            <input type="text" id="telegram_id" name="telegram_id" value="{{ edit_channel.telegram_id if edit_channel else '' }}" placeholder="@mychannel or -1001234567890" required>
+            <p class="hint">Make sure the bot is added as an admin with post permissions in this channel, or posting will fail.</p>
+
+            <button type="submit" class="btn btn-primary">
+                <span class="btn-text-default">{{ "Save changes" if edit_channel else "Add channel" }}</span>
+                <span class="spinner"></span>
+            </button>
+            {% if edit_channel %}<a href="/channels" class="btn btn-secondary">Cancel</a>{% endif %}
+        </form>
+    </div>
+</div>
+{% endblock %}

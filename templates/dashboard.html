@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Dashboard - Relay{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-titles">
+        <div class="page-icon-badge" style="--badge-color: var(--c-purple); --badge-soft: var(--c-purple-soft);">{{ icon('dashboard', 'icon-lg') }}</div>
+        <div>
+            <h1>Dashboard</h1>
+            <div class="subtitle">A quick look at what Relay has been doing.</div>
+        </div>
+    </div>
+    <form method="post" action="/dashboard/trigger">
+        <button type="submit" class="btn btn-primary" style="margin-top:0;">
+            {{ icon('play', 'icon') }}
+            <span class="btn-text-default">Run all schedules now</span>
+            <span class="spinner"></span>
+        </button>
+    </form>
+</div>
+
+{% if triggered is not none %}
+<div class="alert alert-success">
+    {{ icon('check', 'icon') }}
+    {% if triggered > 0 %}
+    Queued {{ triggered }} active schedule{{ "s" if triggered != 1 else "" }} to run now — check the Posts Log in a few seconds for results.
+    {% else %}
+    No active schedules to run. Add one on the Schedules page first.
+    {% endif %}
+</div>
+{% endif %}
+
+<div class="status-banner {% if bot_enabled %}status-on{% else %}status-off{% endif %}">
+    <span class="status-dot"></span>
+    Bot status: <strong>{{ "Running" if bot_enabled else "Stopped" }}</strong>
+    {% if bot_username %}
+    <span class="muted">&middot; connected as</span> <strong>@{{ bot_username }}</strong>
+    {% else %}
+    <span class="muted">&middot; not connected to Telegram yet</span>
+    {% endif %}
+    <span class="muted">&middot; toggle in Settings</span>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-card-top">
+            <div class="stat-icon-badge">{{ icon('check', 'icon') }}</div>
+        </div>
+        <div class="stat-value">{{ posts_today }}</div>
+        <div class="stat-label">Posts today</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-top">
+            <div class="stat-icon-badge">{{ icon('calendar', 'icon') }}</div>
+        </div>
+        <div class="stat-value">{{ posts_week }}</div>
+        <div class="stat-label">Posts this week</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-top">
+            <div class="stat-icon-badge">{{ icon('layers', 'icon') }}</div>
+        </div>
+        <div class="stat-value">{{ posts_all_time }}</div>
+        <div class="stat-label">Posts all time</div>
+    </div>
+</div>
+
+<h2>{{ icon('trend', 'icon') }}Recent activity</h2>
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>Time</th>
+            <th>Source</th>
+            <th>Channel</th>
+            <th>Status</th>
+            <th>Preview</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for post in recent_posts %}
+        <tr>
+            <td>{{ post.created_at.strftime("%b %d, %H:%M") }}</td>
+            <td>{{ post.source.name if post.source else "—" }}</td>
+            <td>{{ post.channel.name if post.channel else "—" }}</td>
+            <td><span class="badge badge-{{ 'success' if post.status == 'success' else 'failed' }}">{{ post.status }}</span></td>
+            <td class="truncate">{{ (post.rewritten_text or post.original_text or "")[:80] }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="muted">No activity yet — add a source and a schedule to get started.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
