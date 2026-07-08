@@ -2,7 +2,9 @@
 destination channels — including photos and videos, not just text."""
 import logging
 import os
+from io import BytesIO
 
+import httpx
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.error import TelegramError
@@ -20,7 +22,30 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 # up to 4096, but a caption attached to media is capped much lower).
 MAX_CAPTION_LEN = 1024
 
+# Used when we download media ourselves — many sites block Telegram's own
+# server-side fetcher (hotlink protection, bot-blocking CDNs) but allow a
+# normal browser-like request, so we fetch it ourselves and hand Telegram
+# the raw bytes instead of asking it to fetch the URL.
+_DOWNLOAD_USER_AGENT = "Mozilla/5.0 (compatible; ContentBot/1.0; +https://example.com/bot)"
+
 _application: Application | None = None
+
+
+async def _download_bytes(url: str, filename: str) -> BytesIO | None:
+    """Download a URL ourselves and return it as a named BytesIO Telegram can
+    upload directly, bypassing Telegram's own (often-blocked) URL fetcher."""
+    try:
+        async with httpx.AsyncClient(
+            timeout=25.0, headers={"User-Agent": _DOWNLOAD_USER_AGENT}, follow_redirects=True
+        ) as client:
+            resp = await client.get(url)
+            resp.raise_for_status()
+        bio = BytesIO(resp.content)
+        bio.name = filename
+        return bio
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Failed to download media ourselves from %s: %s", url, exc)
+        return None
 
 
 def _buffer_message(chat, msg):
@@ -124,9 +149,16 @@ async def send_photo(chat_id: str, photo: str, caption: str | None = None) -> tu
     """Send a photo (URL or Telegram file_id) with an optional caption."""
     if _application is None:
         return False, "Telegram application is not initialized."
+
+    media = photo
+    if photo.startswith("http://") or photo.startswith("https://"):
+        downloaded = await _download_bytes(photo, "image.jpg")
+        if downloaded:
+            media = downloaded  # else fall back to letting Telegram try the URL itself
+
     try:
         await _application.bot.send_photo(
-            chat_id=_normalize_chat_id(chat_id), photo=photo, caption=_truncate_caption(caption)
+            chat_id=_normalize_chat_id(chat_id), photo=media, caption=_truncate_caption(caption)
         )
         return True, None
     except TelegramError as exc:
@@ -141,9 +173,16 @@ async def send_video(chat_id: str, video: str, caption: str | None = None) -> tu
     """Send a video (URL or Telegram file_id) with an optional caption."""
     if _application is None:
         return False, "Telegram application is not initialized."
+
+    media = video
+    if video.startswith("http://") or video.startswith("https://"):
+        downloaded = await _download_bytes(video, "video.mp4")
+        if downloaded:
+            media = downloaded  # else fall back to letting Telegram try the URL itself
+
     try:
         await _application.bot.send_video(
-            chat_id=_normalize_chat_id(chat_id), video=video, caption=_truncate_caption(caption)
+            chat_id=_normalize_chat_id(chat_id), video=media, caption=_truncate_caption(caption)
         )
         return True, None
     except TelegramError as exc:
