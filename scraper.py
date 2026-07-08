@@ -1,5 +1,11 @@
 """Content fetching: website scraping + Telegram channel message buffering.
 
+Every fetched item is a dict: {"text": str, "photo": str | None, "video": str | None}.
+"photo"/"video" are either a direct HTTP URL (public web-preview scraping) or
+a Telegram file_id (content pushed to the bot via a channel/group it's an
+actual member of) — python-telegram-bot's send_photo/send_video accept both
+forms transparently, so downstream code doesn't need to care which one it is.
+
 Note on Telegram sources: the Bot API does not allow a bot to pull the
 historical message list of an arbitrary channel. Instead, the bot must be
 added as a member/admin of the *source* channel, and Telegram will push new
@@ -23,8 +29,16 @@ REQUEST_TIMEOUT = 20.0
 USER_AGENT = "Mozilla/5.0 (compatible; ContentBot/1.0; +https://example.com/bot)"
 
 
-def fetch_website_text(url: str) -> str | None:
-    """Fetch a URL and return cleaned, human-readable text extracted from it."""
+def _extract_bg_url(style_attr: str | None) -> str | None:
+    """Pull a URL out of an inline style="background-image: url('...')" attribute."""
+    if not style_attr:
+        return None
+    match = re.search(r"background-image:\s*url\(['\"]?(.*?)['\"]?\)", style_attr)
+    return match.group(1) if match else None
+
+
+def fetch_website_content(url: str) -> dict | None:
+    """Fetch a URL and return {"text": ..., "photo": og:image or None, "video": None}."""
     try:
         with httpx.Client(timeout=REQUEST_TIMEOUT, headers={"User-Agent": USER_AGENT}, follow_redirects=True) as client:
             resp = client.get(url)
@@ -35,6 +49,12 @@ def fetch_website_text(url: str) -> str | None:
 
     soup = BeautifulSoup(resp.text, "html.parser")
 
+    # Grab the article's representative image (og:image) before stripping tags.
+    photo_url = None
+    og_image = soup.find("meta", property="og:image") or soup.find("meta", attrs={"name": "og:image"})
+    if og_image and og_image.get("content"):
+        photo_url = og_image["content"].strip()
+
     for tag in soup(["script", "style", "nav", "footer", "header", "aside", "form", "noscript"]):
         tag.decompose()
 
@@ -44,11 +64,18 @@ def fetch_website_text(url: str) -> str | None:
     text = container.get_text(separator="\n")
     text = re.sub(r"\n\s*\n+", "\n\n", text)
     text = re.sub(r"[ \t]+", " ", text).strip()
+    text = text[:MAX_ARTICLE_CHARS]
 
-    if not text:
+    if not text and not photo_url:
         return None
 
-    return text[:MAX_ARTICLE_CHARS]
+    return {"text": text, "photo": photo_url, "video": None}
+
+
+def fetch_website_text(url: str) -> str | None:
+    """Back-compat wrapper: text only, no media. Used by the rewrite-preview endpoint."""
+    content = fetch_website_content(url)
+    return content["text"] if content and content.get("text") else None
 
 
 def _normalize_channel_key(raw: str) -> str:
@@ -76,22 +103,25 @@ def _normalize_channel_key(raw: str) -> str:
 # https://t.me/s/<username> — this is the same technique many public
 # aggregators use, and it works for *any* public channel regardless of bot
 # membership. Private groups/channels the bot *is* a member of still use the
-# TelegramMessageBuffer above instead, since they have no public preview page.
+# TelegramMessageBuffer below instead, since they have no public preview page.
+#
+# Media note: the public preview page exposes a direct image URL for photo
+# posts, and a direct video URL for *short* videos/animations. Larger videos
+# only expose a thumbnail image in this preview (Telegram doesn't serve the
+# full file outside the app for those), so those will come through with a
+# thumbnail photo but no re-postable video — this is a platform limitation,
+# not a bug here.
 #
 # Because this is a stateless page scrape (not a push subscription like
 # channel_post updates), we track the highest Telegram message ID we've
 # already seen per channel, in memory, so repeated fetches only return
 # genuinely new posts instead of reposting the same recent messages forever.
-# On first-ever fetch for a channel we record the current baseline without
-# returning anything, matching the "only new content going forward" behavior
-# used everywhere else in this app — so a source doesn't dump its whole
-# recent backlog the moment it's turned on.
 
 _web_seen_lock = Lock()
 _web_seen_ids: dict[str, int] = {}
 
 
-def fetch_telegram_channel_web(channel_key: str) -> list[str]:
+def fetch_telegram_channel_web(channel_key: str) -> list[dict]:
     key = _normalize_channel_key(channel_key)
     url = f"https://t.me/s/{key}"
 
@@ -106,7 +136,7 @@ def fetch_telegram_channel_web(channel_key: str) -> list[str]:
     soup = BeautifulSoup(resp.text, "html.parser")
     posts = soup.find_all("div", class_="tgme_widget_message", attrs={"data-post": True})
 
-    parsed: list[tuple[int, str]] = []
+    parsed: list[tuple[int, dict]] = []
     for post in posts:
         data_post = post.get("data-post", "")
         try:
@@ -115,13 +145,29 @@ def fetch_telegram_channel_web(channel_key: str) -> list[str]:
             continue
 
         text_div = post.find("div", class_="tgme_widget_message_text")
-        if not text_div:
-            continue  # media-only post with no caption text, skip
-        text = text_div.get_text(separator="\n").strip()
-        if not text:
-            continue
+        text = text_div.get_text(separator="\n").strip() if text_div else ""
 
-        parsed.append((msg_id, text))
+        photo_url = None
+        photo_wrap = post.find("a", class_="tgme_widget_message_photo_wrap")
+        if photo_wrap:
+            photo_url = _extract_bg_url(photo_wrap.get("style"))
+
+        video_url = None
+        video_tag = post.find("video", class_="tgme_widget_message_video")
+        if video_tag and video_tag.get("src"):
+            video_url = video_tag["src"]
+        elif not photo_url:
+            # Larger videos only expose a thumbnail (no playable src) in this
+            # preview — use that thumbnail as the photo so at least an image
+            # goes out, rather than posting nothing visual at all.
+            thumb = post.find("i", class_="tgme_widget_message_video_thumb")
+            if thumb:
+                photo_url = _extract_bg_url(thumb.get("style"))
+
+        if not text and not photo_url and not video_url:
+            continue  # nothing usable at all
+
+        parsed.append((msg_id, {"text": text, "photo": photo_url, "video": video_url}))
 
     if not parsed:
         return []
@@ -137,33 +183,33 @@ def fetch_telegram_channel_web(channel_key: str) -> list[str]:
             # with immediately) rather than the whole backlog, then baseline
             # from there for every run after this.
             _web_seen_ids[key] = max_id_on_page
-            newest_id, newest_text = parsed[-1]
+            newest_id, newest_item = parsed[-1]
             logger.info(
                 "Telegram channel '%s': first fetch, posting latest item (message %d) and baselining there.",
                 key, newest_id,
             )
-            return [newest_text]
+            return [newest_item]
         _web_seen_ids[key] = max_id_on_page
 
-    new_items = [text for msg_id, text in parsed if msg_id > last_seen]
+    new_items = [item for msg_id, item in parsed if msg_id > last_seen]
     return new_items
 
 
 class TelegramMessageBuffer:
-    """Thread-safe buffer of incoming channel posts, keyed by channel username/id."""
+    """Thread-safe buffer of incoming channel/group messages, keyed by chat username/id."""
 
     def __init__(self):
         self._lock = Lock()
-        self._messages: dict[str, list[str]] = defaultdict(list)
+        self._messages: dict[str, list[dict]] = defaultdict(list)
 
-    def add_message(self, channel_key: str, text: str):
-        if not text:
+    def add_message(self, channel_key: str, item: dict):
+        if not item or not (item.get("text") or item.get("photo") or item.get("video")):
             return
         with self._lock:
-            self._messages[_normalize_channel_key(channel_key)].append(text)
+            self._messages[_normalize_channel_key(channel_key)].append(item)
 
-    def drain(self, channel_key: str) -> list[str]:
-        """Return and clear all buffered messages for a given channel key."""
+    def drain(self, channel_key: str) -> list[dict]:
+        """Return and clear all buffered items for a given channel key."""
         key = _normalize_channel_key(channel_key)
         with self._lock:
             msgs = self._messages.get(key, [])
@@ -175,11 +221,11 @@ class TelegramMessageBuffer:
 telegram_buffer = TelegramMessageBuffer()
 
 
-def fetch_source_content(source) -> list[str]:
-    """Return a list of raw content strings ready for filtering/rewriting."""
+def fetch_source_content(source) -> list[dict]:
+    """Return a list of {"text", "photo", "video"} dicts ready for filtering/rewriting."""
     if source.type == "website":
-        text = fetch_website_text(source.url)
-        return [text] if text else []
+        content = fetch_website_content(source.url)
+        return [content] if content else []
     elif source.type == "telegram_channel":
         # Try the public web preview first (works for any public channel,
         # even ones you don't administer), then also drain anything the bot

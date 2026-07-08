@@ -11,7 +11,7 @@ from database import SessionLocal
 from gemini import rewrite_content
 from models import BotSettings, Channel, Post, Schedule, Source
 from scraper import fetch_source_content
-from telegram_bot import send_message
+from telegram_bot import send_message, send_photo, send_video
 
 logger = logging.getLogger("telebot.scheduler")
 
@@ -96,15 +96,28 @@ async def run_schedule_job(schedule_id: int):
 
         keywords = source.keyword_list()
 
-        for i, raw_text in enumerate(contents):
-            if not _matches_keywords(raw_text, keywords):
+        for i, item in enumerate(contents):
+            raw_text = item.get("text") or ""
+            photo = item.get("photo")
+            video = item.get("video")
+
+            if raw_text:
+                if not _matches_keywords(raw_text, keywords):
+                    logger.info(
+                        "Schedule %s: item %d skipped — didn't match keywords %s.", schedule_id, i, keywords
+                    )
+                    continue
+            elif keywords:
+                # A caption-less media item can't be judged against a topic
+                # filter — skip rather than guess when keywords are set.
                 logger.info(
-                    "Schedule %s: item %d skipped — didn't match keywords %s.", schedule_id, i, keywords
+                    "Schedule %s: item %d skipped — media-only post with no caption to match keywords %s.",
+                    schedule_id, i, keywords,
                 )
                 continue
 
             final_text = raw_text
-            if settings.rewrite_enabled and source.rewrite_style != "none":
+            if raw_text and settings.rewrite_enabled and source.rewrite_style != "none":
                 model_name = settings.gemini_model
                 logger.info("Schedule %s: item %d sent to Gemini (%s)...", schedule_id, i, model_name)
                 rewritten = await asyncio.to_thread(
@@ -126,8 +139,27 @@ async def run_schedule_job(schedule_id: int):
                 final_text = rewritten
                 logger.info("Schedule %s: item %d rewritten successfully.", schedule_id, i)
 
-            logger.info("Schedule %s: item %d sending to channel '%s'...", schedule_id, i, channel.name)
-            success, error = await send_message(channel.telegram_id, final_text)
+            include_images = settings.include_images
+            logger.info(
+                "Schedule %s: item %d sending to channel '%s' (photo=%s, video=%s, include_images=%s)...",
+                schedule_id, i, channel.name, bool(photo), bool(video), include_images,
+            )
+
+            if include_images and video:
+                success, error = await send_video(channel.telegram_id, video, final_text)
+            elif include_images and photo:
+                success, error = await send_photo(channel.telegram_id, photo, final_text)
+            else:
+                if not final_text:
+                    # Media-only item but images are switched off in Settings
+                    # (or there's no media at all) — nothing sendable, skip.
+                    logger.info(
+                        "Schedule %s: item %d skipped — no text to send and images are disabled in Settings.",
+                        schedule_id, i,
+                    )
+                    continue
+                success, error = await send_message(channel.telegram_id, final_text)
+
             if success:
                 logger.info("Schedule %s: item %d posted successfully.", schedule_id, i)
             else:
@@ -136,8 +168,8 @@ async def run_schedule_job(schedule_id: int):
             post = Post(
                 source_id=source.id,
                 channel_id=channel.id,
-                original_text=raw_text,
-                rewritten_text=final_text if final_text != raw_text else None,
+                original_text=raw_text or None,
+                rewritten_text=(final_text if final_text != raw_text else None) or None,
                 status="success" if success else "failed",
                 error_message=error,
             )
