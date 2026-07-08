@@ -562,7 +562,7 @@ form textarea { resize: vertical; min-height: 64px; }
 
 .login-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; justify-content: center; }
 .login-card h1 { font-size: 18px; margin: 0; text-align: center; }
-.login-sub { text-align: center; color: var(--muted); font-size: 12.5px; margin: -14px 0 22px; }
+.login-sub { text-align: center; color: var(--muted); font-size: 12.5px; margin: 4px 0 22px; }
 
 .alert { padding: 10px 12px; border-radius: var(--radius-sm); font-size: 13px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
 .alert-error { background: var(--failed-bg); color: var(--failed); }
