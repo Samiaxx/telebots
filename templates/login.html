@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css?v=4">
+    <link rel="stylesheet" href="/static/css/style.css?v=5">
     <script>
         (function() {
             var t = localStorage.getItem("relay-theme") || "dark";
@@ -32,6 +32,9 @@
         {% if error %}
         <div class="alert alert-error">{{ error }}</div>
         {% endif %}
+        {% if message %}
+        <div class="alert alert-success">{{ message }}</div>
+        {% endif %}
         <form method="post" action="/login">
             <label for="username">Username</label>
             <input type="text" id="username" name="username" required autofocus>
@@ -45,6 +48,6 @@
             </button>
         </form>
     </div>
-    <script src="/static/js/app.js?v=4"></script>
+    <script src="/static/js/app.js?v=5"></script>
 </body>
 </html>

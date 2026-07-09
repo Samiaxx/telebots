@@ -112,5 +112,8 @@ class BotSettings(Base):
     gemini_model = Column(String(100), nullable=False, default="gemini-flash-latest")
     max_posts_per_hour = Column(Integer, nullable=False, default=20)
     include_images = Column(Boolean, nullable=False, default=False)
+    admin_username = Column(String(255), nullable=True)
+    admin_password_hash = Column(String(255), nullable=True)
+    admin_password_salt = Column(String(64), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
