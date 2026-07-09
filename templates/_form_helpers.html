@@ -1,0 +1,17 @@
+{% from "_icons.html" import icon %}
+{% macro password_input(id, name, required=True, autocomplete="", minlength=None) %}
+<div class="password-field">
+    <input
+        type="password"
+        id="{{ id }}"
+        name="{{ name }}"
+        {% if required %}required{% endif %}
+        {% if autocomplete %}autocomplete="{{ autocomplete }}"{% endif %}
+        {% if minlength %}minlength="{{ minlength }}"{% endif %}
+    >
+    <button type="button" class="password-toggle-btn" aria-label="Show password" tabindex="-1">
+        {{ icon('eye', 'icon icon-on') }}
+        {{ icon('eye-off', 'icon icon-off') }}
+    </button>
+</div>
+{% endmacro %}

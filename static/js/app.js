@@ -8,7 +8,24 @@ document.addEventListener("DOMContentLoaded", () => {
     initAjaxToggles();
     initScheduleBuilder();
     initRewritePreview();
+    initPasswordToggles();
 });
+
+// Adds a show/hide eye icon to every password field wrapped in a
+// .password-field container, so people can verify what they typed instead
+// of guessing blind — especially useful for pasted or complex passwords.
+function initPasswordToggles() {
+    document.querySelectorAll(".password-toggle-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const wrapper = btn.closest(".password-field");
+            const input = wrapper ? wrapper.querySelector("input") : null;
+            if (!input) return;
+            const showing = input.type === "text";
+            input.type = showing ? "password" : "text";
+            btn.classList.toggle("showing", !showing);
+        });
+    });
+}
 
 // Day/night theme, persisted in localStorage. Applied as early as possible
 // (before other init) so there's no flash of the wrong theme.

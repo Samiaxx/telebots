@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css?v=5">
+    <link rel="stylesheet" href="/static/css/style.css?v=6">
     <script>
         (function() {
             var t = localStorage.getItem("relay-theme") || "dark";
@@ -15,6 +15,7 @@
         })();
     </script>
 </head>
+{% from "_form_helpers.html" import password_input %}
 <body class="login-body">
     <div class="login-card">
         <div class="login-brand">
@@ -40,7 +41,7 @@
             <input type="text" id="username" name="username" required autofocus>
 
             <label for="password">Password</label>
-            <input type="password" id="password" name="password" required>
+            {{ password_input("password", "password", autocomplete="current-password") }}
 
             <button type="submit" class="btn btn-primary" style="width: 100%;">
                 <span class="btn-text-default">Log in</span>
@@ -48,6 +49,6 @@
             </button>
         </form>
     </div>
-    <script src="/static/js/app.js?v=5"></script>
+    <script src="/static/js/app.js?v=6"></script>
 </body>
 </html>

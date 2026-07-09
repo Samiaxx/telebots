@@ -573,3 +573,32 @@ form textarea { resize: vertical; min-height: 64px; }
 .badge-health.ok .dot { background: var(--success); box-shadow: 0 0 0 3px var(--success-bg); }
 .badge-health.err .dot { background: var(--failed); box-shadow: 0 0 0 3px var(--failed-bg); }
 .badge-health.idle .dot { background: var(--muted-2); }
+
+/* ---------- Password visibility toggle ---------- */
+.password-field {
+    position: relative;
+}
+.password-field input {
+    padding-right: 40px !important;
+}
+.password-toggle-btn {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--muted-2);
+    cursor: pointer;
+    padding: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    transition: color 0.15s ease, background 0.15s ease;
+}
+.password-toggle-btn:hover { color: var(--text); background: var(--panel-3); }
+.password-toggle-btn .icon { width: 16px; height: 16px; }
+.password-toggle-btn .icon-off { display: none; }
+.password-toggle-btn.showing .icon-on { display: none; }
+.password-toggle-btn.showing .icon-off { display: block; }

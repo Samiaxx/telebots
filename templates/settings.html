@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon %}
+{% from "_form_helpers.html" import password_input %}
 {% block title %}Settings - Relay{% endblock %}
 {% block content %}
 <div class="page-header">
@@ -78,17 +79,17 @@
 
     <form method="post" action="/settings/credentials">
         <label for="current_password">Current password</label>
-        <input type="password" id="current_password" name="current_password" required autocomplete="current-password">
+        {{ password_input("current_password", "current_password", autocomplete="current-password") }}
         <p class="hint">Required to confirm it's really you making this change.</p>
 
         <label for="new_username">New username</label>
         <input type="text" id="new_username" name="new_username" value="{{ settings.admin_username or '' }}" required>
 
         <label for="new_password">New password <span class="muted" style="font-weight:400;">(leave blank to keep current password)</span></label>
-        <input type="password" id="new_password" name="new_password" autocomplete="new-password" minlength="6">
+        {{ password_input("new_password", "new_password", required=False, autocomplete="new-password", minlength=6) }}
 
         <label for="confirm_new_password">Confirm new password</label>
-        <input type="password" id="confirm_new_password" name="confirm_new_password" autocomplete="new-password" minlength="6">
+        {{ password_input("confirm_new_password", "confirm_new_password", required=False, autocomplete="new-password", minlength=6) }}
 
         <button type="submit" class="btn btn-primary">
             <span class="btn-text-default">Update login credentials</span>
