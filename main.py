@@ -8,7 +8,9 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from database import Base, engine
+from auth import get_or_seed_admin_credentials
+from database import Base, SessionLocal, engine
+from models import BotSettings
 from routes import channels, dashboard, login, posts, schedules, settings, sources
 from scheduler import start_scheduler, stop_scheduler
 from telegram_bot import build_application
@@ -25,6 +27,25 @@ async def lifespan(app: FastAPI):
     # schema changes going forward; this is a safety net for first run).
     Base.metadata.create_all(bind=engine)
 
+    # Seed admin login credentials and the Gemini API key into the database
+    # from .env the very first time this runs. After this, both are stored
+    # (hashed, for the password) in the database and changeable from the
+    # Settings page, without needing shell access or a restart.
+    db = SessionLocal()
+    try:
+        get_or_seed_admin_credentials(db)
+        bot_settings = db.query(BotSettings).first()
+        if not bot_settings:
+            bot_settings = BotSettings()
+            db.add(bot_settings)
+            db.commit()
+            db.refresh(bot_settings)
+        if not bot_settings.gemini_api_key:
+            bot_settings.gemini_api_key = os.getenv("GEMINI_API_KEY", "")
+            db.commit()
+    finally:
+        db.close()
+
     # Start the Telegram bot in polling mode so it can receive channel_post
     # updates from source channels and be ready to send to destination channels.
     application = build_application()
@@ -32,6 +53,17 @@ async def lifespan(app: FastAPI):
     await application.start()
     await application.updater.start_polling(allowed_updates=["channel_post", "message"])
     logger.info("Telegram bot started (polling).")
+
+    live_username = application.bot.username
+    expected_username = (os.getenv("TELEGRAM_BOT_USERNAME") or "").strip().lstrip("@")
+    if expected_username and live_username and expected_username.lower() != live_username.lower():
+        logger.warning(
+            "TELEGRAM_BOT_USERNAME in .env says '@%s' but the token actually connects as '@%s'. "
+            "If this is unexpected, double-check TELEGRAM_BOT_TOKEN — you may have the wrong bot's token.",
+            expected_username, live_username,
+        )
+    elif live_username:
+        logger.info("Connected as @%s.", live_username)
 
     # Start the cron scheduler that drives the fetch -> rewrite -> post pipeline.
     start_scheduler()

@@ -47,6 +47,16 @@
         <label for="gemini_model">Default Gemini model</label>
         <input type="text" id="gemini_model" name="gemini_model" value="{{ settings.gemini_model }}">
 
+        <label for="gemini_api_key">Gemini API key <span class="muted" style="font-weight:400;">(leave blank to keep current key)</span></label>
+        {{ password_input("gemini_api_key", "gemini_api_key", required=False, autocomplete="off") }}
+        <p class="hint">
+            {% if settings.gemini_api_key %}
+            Current key ends in <code>…{{ settings.gemini_api_key[-4:] }}</code>. Paste a new key here to replace it — get one from <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color: var(--accent-2);">Google AI Studio</a>.
+            {% else %}
+            No key set yet. Get one from <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color: var(--accent-2);">Google AI Studio</a> and paste it here.
+            {% endif %}
+        </p>
+
         <label for="max_posts_per_hour">Max posts per hour</label>
         <input type="number" id="max_posts_per_hour" name="max_posts_per_hour" min="1" value="{{ settings.max_posts_per_hour }}">
         <p class="hint">A safety cap across all sources combined, to avoid flooding channels.</p>

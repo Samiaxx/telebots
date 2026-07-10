@@ -115,5 +115,6 @@ class BotSettings(Base):
     admin_username = Column(String(255), nullable=True)
     admin_password_hash = Column(String(255), nullable=True)
     admin_password_salt = Column(String(64), nullable=True)
+    gemini_api_key = Column(String(255), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

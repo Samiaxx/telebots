@@ -52,6 +52,7 @@ def update_settings(
     rewrite_enabled: bool = Form(False),
     default_rewrite_style: str = Form("light"),
     gemini_model: str = Form("gemini-flash-latest"),
+    gemini_api_key: str = Form(""),
     max_posts_per_hour: int = Form(20),
     include_images: bool = Form(False),
     db: Session = Depends(get_db),
@@ -67,6 +68,10 @@ def update_settings(
     settings.gemini_model = gemini_model
     settings.max_posts_per_hour = max_posts_per_hour
     settings.include_images = include_images
+    if gemini_api_key.strip():
+        # Leave-blank-to-keep-current, same pattern as the password change
+        # below — never overwrite a real key with an accidental empty submit.
+        settings.gemini_api_key = gemini_api_key.strip()
     db.commit()
 
     return RedirectResponse(url="/settings", status_code=302)

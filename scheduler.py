@@ -128,6 +128,7 @@ async def run_schedule_job(schedule_id: int):
                     style=source.rewrite_style,
                     model_name=model_name,
                     persona=source.persona,
+                    api_key=settings.gemini_api_key,
                 )
                 if rewritten is None:
                     logger.info(

@@ -17,9 +17,10 @@ load_dotenv()
 
 logger = logging.getLogger("telebot.gemini")
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+# Fallback only — used to seed the database on first run. After that, the
+# key stored in Settings (changeable from the admin panel) is what's
+# actually used for every call, via the api_key parameter below.
+ENV_GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 SKIP_TOKEN = "SKIP"
 
@@ -65,11 +66,15 @@ def rewrite_content(
     style: str,
     model_name: str = "gemini-flash-latest",
     persona: str | None = None,
+    api_key: str | None = None,
 ) -> str | None:
     """Rewrite `content` via Gemini. Returns None if Gemini says to skip, or on error."""
-    if not GEMINI_API_KEY:
-        logger.error("GEMINI_API_KEY not configured; cannot rewrite content.")
+    effective_key = api_key or ENV_GEMINI_API_KEY
+    if not effective_key:
+        logger.error("No Gemini API key configured (Settings or GEMINI_API_KEY); cannot rewrite content.")
         return None
+
+    genai.configure(api_key=effective_key)
 
     keyword_str = ", ".join(keywords) if keywords else "any topic (no restriction)"
     beat = _build_beat_description(keywords, persona)

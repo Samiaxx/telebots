@@ -7,7 +7,7 @@ from auth import login_required_or_redirect
 from database import get_db
 from gemini import rewrite_content
 from models import BotSettings, Source
-from scraper import fetch_source_content
+from scraper import fetch_source_content, fetch_website_text
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -164,17 +164,15 @@ async def preview_rewrite(request: Request, db: Session = Depends(get_db)):
             source = db.query(Source).filter(Source.id == int(source_id)).first()
             if source:
                 samples = fetch_source_content(source)
-                sample_text = samples[0] if samples else None
+                sample_text = samples[0].get("text") if samples and samples[0].get("text") else None
 
         if not sample_text and source_type == "website" and url:
-            from scraper import fetch_website_text
-
             sample_text = fetch_website_text(url)
         elif not sample_text and source_type == "telegram_channel" and url:
             from scraper import fetch_telegram_channel_web
 
             samples = fetch_telegram_channel_web(url)
-            sample_text = samples[0] if samples else None
+            sample_text = samples[0].get("text") if samples and samples[0].get("text") else None
 
         if not sample_text:
             hint = (
@@ -186,6 +184,7 @@ async def preview_rewrite(request: Request, db: Session = Depends(get_db)):
 
         settings = db.query(BotSettings).first()
         model_name = settings.gemini_model if settings else "gemini-flash-latest"
+        api_key = settings.gemini_api_key if settings else None
 
         rewritten = rewrite_content(
             content=sample_text[:3000],
@@ -194,6 +193,7 @@ async def preview_rewrite(request: Request, db: Session = Depends(get_db)):
             style=style,
             model_name=model_name,
             persona=persona,
+            api_key=api_key,
         )
 
         return JSONResponse(
