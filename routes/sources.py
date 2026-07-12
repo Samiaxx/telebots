@@ -47,7 +47,6 @@ def create_source(
     name: str = Form(...),
     type: str = Form(...),
     url: str = Form(...),
-    fetch_interval_minutes: int = Form(60),
     rewrite_style: str = Form("light"),
     language: str = Form("English"),
     topic_keywords: str = Form(""),
@@ -64,7 +63,6 @@ def create_source(
         name=name,
         type=type,
         url=url,
-        fetch_interval_minutes=fetch_interval_minutes,
         rewrite_style=rewrite_style,
         language=language,
         topic_keywords=topic_keywords,
@@ -84,7 +82,6 @@ def update_source(
     name: str = Form(...),
     type: str = Form(...),
     url: str = Form(...),
-    fetch_interval_minutes: int = Form(60),
     rewrite_style: str = Form("light"),
     language: str = Form("English"),
     topic_keywords: str = Form(""),
@@ -102,7 +99,6 @@ def update_source(
         source.name = name
         source.type = type
         source.url = url
-        source.fetch_interval_minutes = fetch_interval_minutes
         source.rewrite_style = rewrite_style
         source.language = language
         source.topic_keywords = topic_keywords

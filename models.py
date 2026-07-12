@@ -40,7 +40,6 @@ class Source(Base):
     name = Column(String(255), nullable=False)
     type = Column(String(50), nullable=False)  # website | telegram_channel
     url = Column(String(500), nullable=False)
-    fetch_interval_minutes = Column(Integer, nullable=False, default=60)
     rewrite_style = Column(String(20), nullable=False, default=RewriteStyle.light.value)
     language = Column(String(50), nullable=False, default="English")
     topic_keywords = Column(String(500), nullable=True, default="")
