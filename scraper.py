@@ -136,6 +136,26 @@ def fetch_telegram_channel_web(channel_key: str) -> list[dict]:
     soup = BeautifulSoup(resp.text, "html.parser")
     posts = soup.find_all("div", class_="tgme_widget_message", attrs={"data-post": True})
 
+    if not posts:
+        # A genuine public channel preview always has a channel-info header,
+        # even if it happens to have zero recent messages. If that header is
+        # ALSO missing, this usually means Telegram served its "sensitive
+        # content" restriction page instead of the real preview — this is a
+        # Telegram-side filter on the anonymous/logged-out preview specifically,
+        # not something a scraper can authenticate past or disable. It commonly
+        # affects news/political channels regardless of how active they are.
+        has_channel_header = soup.find(class_="tgme_channel_info_header") is not None
+        if not has_channel_header:
+            logger.warning(
+                "Telegram channel '%s': got a response but it doesn't look like a normal channel preview "
+                "(no channel header found). This usually means Telegram is blocking the public/anonymous "
+                "preview for this channel due to its 'sensitive content' filter — common for news/political "
+                "channels — rather than the channel having no recent posts. This can't be bypassed by "
+                "scraping; it would require the bot to actually be added as a member of the channel instead.",
+                key,
+            )
+        return []
+
     parsed: list[tuple[int, dict]] = []
     for post in posts:
         data_post = post.get("data-post", "")
